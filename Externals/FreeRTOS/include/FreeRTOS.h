@@ -888,7 +888,7 @@
 
 #ifndef configSUPPORT_STATIC_ALLOCATION
     /* Defaults to 0 for backward compatibility. */
-    #define configSUPPORT_STATIC_ALLOCATION    0
+    #define configSUPPORT_STATIC_ALLOCATION    1
 #endif
 
 #ifndef configSUPPORT_DYNAMIC_ALLOCATION
