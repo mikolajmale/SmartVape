@@ -28,7 +28,6 @@
 #include "task.h"
 
 #include "stdio.h"
-#include "MyClass.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,10 +58,7 @@ static void db_led_task_handler(void* params);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int __io_putchar(int ch){
-	ITM_SendChar(ch);
-	return ch;
-}
+
 /* USER CODE END 0 */
 
 /**
