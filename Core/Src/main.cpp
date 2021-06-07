@@ -20,11 +20,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "gpio.h"
-#include "MyClass.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
+#include "task.h"
 
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,7 +53,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+static void db_led_task_handler(void* params);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -65,7 +68,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  TaskHandle_t db_led_task_handle;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -87,7 +90,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-  MyClass cls{};
+  configASSERT(xTaskCreate(db_led_task_handler, "debug_led_task", 200, NULL, 2, &db_led_task_handle) == pdPASS);
+
+  vTaskStartScheduler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -147,7 +152,37 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+static void db_led_task_handler(void* params){
+
+	while(1){
+		printf("hello\n");
+		HAL_GPIO_TogglePin(DB_LED_GPIO_Port, DB_LED_Pin);
+		vTaskDelay(1000);
+	}
+}
+
 /* USER CODE END 4 */
+
+/**
+ * @brief  Period elapsed callback in non blocking mode
+ * @note   This function is called  when TIM5 interrupt took place, inside
+ * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+ * a global variable "uwTick" used as application time base.
+ * @param  htim : TIM handle
+ * @retval None
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+ /* USER CODE BEGIN Callback 0 */
+
+ /* USER CODE END Callback 0 */
+ if (htim->Instance == TIM5) {
+   HAL_IncTick();
+ }
+ /* USER CODE BEGIN Callback 1 */
+
+ /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
