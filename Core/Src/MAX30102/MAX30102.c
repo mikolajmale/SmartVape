@@ -71,7 +71,7 @@
 #include "MAX30102/MAX30102.h"
 #include "MAX30102/algorithm.h"
 
-#define I2C_TIMEOUT	100000
+#define I2C_TIMEOUT	100
 
 I2C_HandleTypeDef *i2c_max30102;
 
@@ -427,6 +427,12 @@ int32_t Max30102_GetSpO2Value(void)
 	return Sp02Value;
 }
 
+void led_low_startover(){
+	Max30102_Led1PulseAmplitude(MAX30102_RED_LED_CURRENT_LOW);
+	Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_LOW);
+	StateMachine = MAX30102_STATE_BEGIN;
+}
+
 void Max30102_Task(void)
 {
 	switch(StateMachine)
@@ -442,7 +448,7 @@ void Max30102_Task(void)
 				Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_HIGH);
 				StateMachine = MAX30102_STATE_CALIBRATE;
 			}
-			break;
+		break;
 
 		case MAX30102_STATE_CALIBRATE:
 				if(IsFingerOnScreen)
@@ -452,29 +458,21 @@ void Max30102_Task(void)
 						StateMachine = MAX30102_STATE_CALCULATE_HR;
 					}
 				}
-				else
-				{
-					Max30102_Led1PulseAmplitude(MAX30102_RED_LED_CURRENT_LOW);
-					Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_LOW);
-					StateMachine = MAX30102_STATE_BEGIN;
-				}
-			break;
+				else led_low_startover();
+
+		break;
 
 		case MAX30102_STATE_CALCULATE_HR:
 			if(IsFingerOnScreen)
 			{
-				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH-MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
-				BufferTail = (BufferTail + MAX30102_SAMPLES_PER_SECOND) % MAX30102_BUFFER_LENGTH;
+//				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH-MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
+//				BufferTail = (BufferTail + MAX30102_SAMPLES_PER_SECOND) % MAX30102_BUFFER_LENGTH;
 				CollectedSamples = 0;
 				StateMachine = MAX30102_STATE_COLLECT_NEXT_PORTION;
 			}
-			else
-			{
-				Max30102_Led1PulseAmplitude(MAX30102_RED_LED_CURRENT_LOW);
-				Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_LOW);
-				StateMachine = MAX30102_STATE_BEGIN;
-			}
-			break;
+			else led_low_startover();
+
+		break;
 
 		case MAX30102_STATE_COLLECT_NEXT_PORTION:
 			if(IsFingerOnScreen)
@@ -484,13 +482,9 @@ void Max30102_Task(void)
 					StateMachine = MAX30102_STATE_CALCULATE_HR;
 				}
 			}
-			else
-			{
-				Max30102_Led1PulseAmplitude(MAX30102_RED_LED_CURRENT_LOW);
-				Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_LOW);
-				StateMachine = MAX30102_STATE_BEGIN;
-			}
-			break;
+			else led_low_startover();
+
+		break;
 	}
 }
 

@@ -164,9 +164,8 @@ void SystemClock_Config(void)
 static void db_led_task_handler(void* params){
 
 	while(1){
-		printf("hello\n");
 		HAL_GPIO_TogglePin(DB_LED_GPIO_Port, DB_LED_Pin);
-		vTaskDelay(1000);
+		vTaskDelay(500);
 	}
 }
 
@@ -178,7 +177,7 @@ static void max30102_task_handler(void* params){
 		Max30102_Task();
 		spo2 = Max30102_GetSpO2Value();
 		hr = Max30102_GetHeartRate();
-		vTaskDelay(10);
+		vTaskDelay(50);
 	}
 }
 
