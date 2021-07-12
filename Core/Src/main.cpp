@@ -58,9 +58,11 @@ static void db_led_task_handler(void* params);
 TaskHandle_t db_led_task_handle;
 static void max30102_task_handler(void* params);
 TaskHandle_t max30102_task_handle;
+//static void max30102_print_task_handler(void* params);
+//TaskHandle_t max30102_print_task_handle;
+
 extern I2C_HandleTypeDef hi2c1;
 
-int32_t spo2{}, hr{};
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -175,12 +177,13 @@ static void max30102_task_handler(void* params){
 
 	while(1){
 		Max30102_Task();
-		spo2 = Max30102_GetSpO2Value();
-		hr = Max30102_GetHeartRate();
+
+//		spo2 = Max30102_GetSpO2Value();
+//		hr = Max30102_GetHeartRate();
+		// with 10 ms system crashes - needs testing
 		vTaskDelay(50);
 	}
 }
-
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
