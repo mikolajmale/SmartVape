@@ -71,7 +71,7 @@
 #include "task.h"
 
 #include "MAX30102/MAX30102.h"
-#include "MAX30102/algorithm.h"
+//#include "MAX30102/algorithm.h"
 
 #define I2C_TIMEOUT	100
 
@@ -127,43 +127,6 @@ MAX30102_STATUS Max30102_WriteRegisterBit(uint8_t Register, uint8_t Bit, uint8_t
 	return MAX30102_OK;
 }
 
-MAX30102_STATUS Max30102_ReadFifo(volatile uint32_t *pun_red_led, volatile uint32_t *pun_ir_led)
-{
-	uint32_t un_temp;
-	*pun_red_led=0;
-	*pun_ir_led=0;
-	uint8_t ach_i2c_data[6];
-
-	if(HAL_I2C_Mem_Read(i2c_max30102, MAX30102_ADDRESS, REG_FIFO_DATA, 1, ach_i2c_data, 6, I2C_TIMEOUT) != HAL_OK)
-	{
-		return MAX30102_ERROR;
-	}
-	un_temp=(unsigned char) ach_i2c_data[0];
-	un_temp<<=16;
-	*pun_red_led+=un_temp;
-	un_temp=(unsigned char) ach_i2c_data[1];
-	un_temp<<=8;
-	*pun_red_led+=un_temp;
-	un_temp=(unsigned char) ach_i2c_data[2];
-	*pun_red_led+=un_temp;
-
-	un_temp=(unsigned char) ach_i2c_data[3];
-	un_temp<<=16;
-	*pun_ir_led+=un_temp;
-	un_temp=(unsigned char) ach_i2c_data[4];
-	un_temp<<=8;
-	*pun_ir_led+=un_temp;
-	un_temp=(unsigned char) ach_i2c_data[5];
-	*pun_ir_led+=un_temp;
-	*pun_red_led&=0x03FFFF;  //Mask MSB [23:18]
-	*pun_ir_led&=0x03FFFF;  //Mask MSB [23:18]
-
-	current_ir = *pun_ir_led;
-	current_red = *pun_red_led;
-
-	return MAX30102_OK;
-}
-
 //
 //	Interrupts
 //
@@ -190,62 +153,6 @@ MAX30102_STATUS Max30102_SetIntInternalTemperatureReadyEnabled(uint8_t Enable)
 	return Max30102_WriteRegisterBit(REG_INTR_ENABLE_2, INT_DIE_TEMP_RDY_BIT, Enable);
 }
 #endif
-MAX30102_STATUS Max30102_ReadInterruptStatus(uint8_t *Status)
-{
-	uint8_t tmp;
-	*Status = 0;
-
-	if(MAX30102_OK != Max30102_ReadReg(REG_INTR_STATUS_1, &tmp))
-		return MAX30102_ERROR;
-	*Status |= tmp & 0xE1; // 3 highest bits
-#ifdef MAX30102_USE_INTERNAL_TEMPERATURE
-	if(MAX30102_OK != Max30102_ReadReg(REG_INTR_STATUS_2, &tmp))
-		return MAX30102_ERROR;
-	*Status |= tmp & 0x02;
-#endif
-	return MAX30102_OK;
-}
-
-void collect_fifo(){
-	while(MAX30102_OK != Max30102_ReadFifo((RedBuffer+BufferHead), (IrBuffer+BufferHead))); // read 2 words
-	if(IsFingerOnScreen)
-	{
-		if(IrBuffer[BufferHead] < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
-	}
-	else
-	{
-		if(IrBuffer[BufferHead] > MAX30102_IR_VALUE_FINGER_ON_SENSOR) IsFingerOnScreen = 1;
-	}
-	BufferHead = (BufferHead + 1) % MAX30102_BUFFER_LENGTH;
-	CollectedSamples++;
-}
-
-void Max30102_InterruptCallback(void)
-{
-	uint8_t Status;
-	// TODO: omin bledna paczke
-	while(MAX30102_OK != Max30102_ReadInterruptStatus(&Status));
-
-	// Almost Full FIFO Interrupt handle
-	if(Status & (1<<INT_A_FULL_BIT))
-	{
-		for(uint8_t i = 0; i < MAX30102_FIFO_ALMOST_FULL_SAMPLES; i++) collect_fifo();
-	}
-
-	// New FIFO Data Ready Interrupt handle
-	if(Status & (1<<INT_PPG_RDY_BIT)) collect_fifo();
-
-//	//  Ambient Light Cancellation Overflow Interrupt handle
-//	if(Status & (1<<INT_ALC_OVF_BIT)){};
-//
-//	// Power Ready Interrupt handle
-//	if(Status & (1<<INT_PWR_RDY_BIT)){};
-
-#ifdef MAX30102_USE_INTERNAL_TEMPERATURE
-	// Internal Temperature Ready Interrupt handle
-	if(Status & (1<<INT_DIE_TEMP_RDY_BIT)){};
-#endif
-}
 
 //
 //	FIFO Configuration
@@ -424,8 +331,6 @@ void led_low_startover(){
 	StateMachine = MAX30102_STATE_BEGIN;
 }
 
-bool f{true};
-
 void Max30102_Task(void)
 {
 	switch(StateMachine)
@@ -458,9 +363,9 @@ void Max30102_Task(void)
 		case MAX30102_STATE_CALCULATE_HR:
 			if(IsFingerOnScreen)
 			{
-				taskDISABLE_INTERRUPTS();
-				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
-				taskENABLE_INTERRUPTS();
+//				taskDISABLE_INTERRUPTS();
+//				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
+//				taskENABLE_INTERRUPTS();
 				BufferTail = (BufferTail + MAX30102_SAMPLES_PER_SECOND) % MAX30102_BUFFER_LENGTH;
 				CollectedSamples = 0;
 				StateMachine = MAX30102_STATE_COLLECT_NEXT_PORTION;
@@ -481,6 +386,100 @@ void Max30102_Task(void)
 
 		break;
 	}
+}
+
+MAX30102_STATUS Max30102_ReadFifo(volatile uint32_t *pun_red_led, volatile uint32_t *pun_ir_led)
+{
+	uint32_t un_temp;
+	*pun_red_led=0;
+	*pun_ir_led=0;
+	uint8_t ach_i2c_data[6];
+
+	if(HAL_I2C_Mem_Read(i2c_max30102, MAX30102_ADDRESS, REG_FIFO_DATA, 1, ach_i2c_data, 6, I2C_TIMEOUT) != HAL_OK)
+	{
+		return MAX30102_ERROR;
+	}
+	un_temp=(unsigned char) ach_i2c_data[0];
+	un_temp<<=16;
+	*pun_red_led+=un_temp;
+	un_temp=(unsigned char) ach_i2c_data[1];
+	un_temp<<=8;
+	*pun_red_led+=un_temp;
+	un_temp=(unsigned char) ach_i2c_data[2];
+	*pun_red_led+=un_temp;
+
+	un_temp=(unsigned char) ach_i2c_data[3];
+	un_temp<<=16;
+	*pun_ir_led+=un_temp;
+	un_temp=(unsigned char) ach_i2c_data[4];
+	un_temp<<=8;
+	*pun_ir_led+=un_temp;
+	un_temp=(unsigned char) ach_i2c_data[5];
+	*pun_ir_led+=un_temp;
+	*pun_red_led&=0x03FFFF;  //Mask MSB [23:18]
+	*pun_ir_led&=0x03FFFF;  //Mask MSB [23:18]
+
+	current_ir = *pun_ir_led;
+	current_red = *pun_red_led;
+
+	return MAX30102_OK;
+}
+
+MAX30102_STATUS Max30102_ReadInterruptStatus(uint8_t *Status)
+{
+	uint8_t tmp;
+	*Status = 0;
+
+	if(MAX30102_OK != Max30102_ReadReg(REG_INTR_STATUS_1, &tmp))
+		return MAX30102_ERROR;
+	*Status |= tmp & 0xE1; // 3 highest bits
+#ifdef MAX30102_USE_INTERNAL_TEMPERATURE
+	if(MAX30102_OK != Max30102_ReadReg(REG_INTR_STATUS_2, &tmp))
+		return MAX30102_ERROR;
+	*Status |= tmp & 0x02;
+#endif
+	return MAX30102_OK;
+}
+
+void collect_fifo(){
+	while(MAX30102_OK != Max30102_ReadFifo((RedBuffer+BufferHead), (IrBuffer+BufferHead))); // read 2 words
+	if(IsFingerOnScreen)
+	{
+		if(IrBuffer[BufferHead] < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
+	}
+	else
+	{
+		if(IrBuffer[BufferHead] > MAX30102_IR_VALUE_FINGER_ON_SENSOR) IsFingerOnScreen = 1;
+	}
+	BufferHead = (BufferHead + 1) % MAX30102_BUFFER_LENGTH;
+	CollectedSamples++;
+}
+
+void Max30102_InterruptCallback(void)
+{
+	uint8_t Status;
+	// TODO: omin bledna paczke
+	while(MAX30102_OK != Max30102_ReadInterruptStatus(&Status));
+
+	// Almost Full FIFO Interrupt handle
+	if(Status & (1<<INT_A_FULL_BIT))
+	{
+		for(uint8_t i = 0; i < MAX30102_FIFO_ALMOST_FULL_SAMPLES; i++) collect_fifo();
+	}
+
+	// New FIFO Data Ready Interrupt handle
+	if(Status & (1<<INT_PPG_RDY_BIT)) collect_fifo();
+
+//	//  Ambient Light Cancellation Overflow Interrupt handle
+//	if(Status & (1<<INT_ALC_OVF_BIT)){};
+//
+//	// Power Ready Interrupt handle
+//	if(Status & (1<<INT_PWR_RDY_BIT)){};
+
+#ifdef MAX30102_USE_INTERNAL_TEMPERATURE
+	// Internal Temperature Ready Interrupt handle
+	if(Status & (1<<INT_DIE_TEMP_RDY_BIT)){};
+#endif
 }
 
 //

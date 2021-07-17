@@ -175,13 +175,15 @@
                         					
                     </folderInfo>
                     					
+                    <fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1669227182.935723978" name="algorithm.h" rcbsApplicability="disable" resourcePath="Core/Inc/MAX30102/algorithm.h" toolsToInvoke=""/>
+                    					
                     <sourceEntries>
-                        						
-                        <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Externals"/>
                         						
                         <entry excluding="Src/sysmem.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
                         						
                         <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
+                        						
+                        <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Externals"/>
                         					
                     </sourceEntries>
                     				
