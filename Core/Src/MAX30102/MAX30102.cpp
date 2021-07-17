@@ -67,6 +67,8 @@
 */
 #include "main.h"
 #include "i2c.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include "MAX30102/MAX30102.h"
 #include "MAX30102/algorithm.h"
@@ -221,6 +223,7 @@ void collect_fifo(){
 void Max30102_InterruptCallback(void)
 {
 	uint8_t Status;
+	// TODO: omin bledna paczke
 	while(MAX30102_OK != Max30102_ReadInterruptStatus(&Status));
 
 	// Almost Full FIFO Interrupt handle
@@ -455,7 +458,9 @@ void Max30102_Task(void)
 		case MAX30102_STATE_CALCULATE_HR:
 			if(IsFingerOnScreen)
 			{
-//				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH-MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
+				taskDISABLE_INTERRUPTS();
+				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
+				taskENABLE_INTERRUPTS();
 				BufferTail = (BufferTail + MAX30102_SAMPLES_PER_SECOND) % MAX30102_BUFFER_LENGTH;
 				CollectedSamples = 0;
 				StateMachine = MAX30102_STATE_COLLECT_NEXT_PORTION;
