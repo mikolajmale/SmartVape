@@ -20,12 +20,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "gpio.h"
-
+#include "i2c.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "task.h"
+
 
 #include "stdio.h"
 /* USER CODE END Includes */
@@ -54,6 +55,14 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 static void db_led_task_handler(void* params);
+TaskHandle_t db_led_task_handle;
+static void max30102_task_handler(void* params);
+TaskHandle_t max30102_task_handle;
+//static void max30102_print_task_handler(void* params);
+//TaskHandle_t max30102_print_task_handle;
+
+extern I2C_HandleTypeDef hi2c1;
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -68,7 +77,6 @@ static void db_led_task_handler(void* params);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  TaskHandle_t db_led_task_handle;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -89,8 +97,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  configASSERT(xTaskCreate(db_led_task_handler, "debug_led_task", 200, NULL, 2, &db_led_task_handle) == pdPASS);
+  configASSERT(xTaskCreate(db_led_task_handler, "debug_led_task", 200, NULL, 3, &db_led_task_handle) == pdPASS);
+  auto const status = xTaskCreate(max30102_task_handler, "max30102_task", 5000, NULL, 2, &max30102_task_handle);
+  configASSERT(status == pdPASS);
 
   vTaskStartScheduler();
   /* USER CODE END 2 */
@@ -155,9 +166,30 @@ void SystemClock_Config(void)
 static void db_led_task_handler(void* params){
 
 	while(1){
-		printf("hello\n");
 		HAL_GPIO_TogglePin(DB_LED_GPIO_Port, DB_LED_Pin);
-		vTaskDelay(1000);
+		vTaskDelay(500);
+	}
+}
+
+static void max30102_task_handler(void* params){
+	auto const status = Max30102_Init(&hi2c1);
+	configASSERT(status == MAX30102_OK);
+
+	while(1){
+		Max30102_Task();
+
+//		spo2 = Max30102_GetSpO2Value();
+//		hr = Max30102_GetHeartRate();
+		// with 10 ms system crashes - needs testing
+		vTaskDelay(50);
+	}
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == MAX_INT_Pin)
+	{
+		Max30102_InterruptCallback();
 	}
 }
 

@@ -32,7 +32,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "MAX30102/MAX30102.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -60,6 +60,9 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define DB_LED_Pin GPIO_PIN_13
 #define DB_LED_GPIO_Port GPIOC
+#define MAX_INT_Pin GPIO_PIN_15
+#define MAX_INT_GPIO_Port GPIOA
+#define MAX_INT_EXTI_IRQn EXTI15_10_IRQn
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
