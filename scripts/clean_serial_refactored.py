@@ -1,19 +1,43 @@
 import sys, serial, argparse
 from collections import deque
-
+from enum import Enum
+from typing import List
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+class ParseTypes(Enum):
+    INT = 1
+    FLOAT = 2
+    CHAR = 3
+
+
+class SerialLineParser:
+    def __init__(self, delimeter=',', arg_num: int = 2):
+        self.__delimeter = delimeter
+        self.__arg_num = arg_num
+
+    def __call__(self, msg: str):
+        if self.__check_if_valid_msg(msg):
+            return [0.0] * self.__arg_num
+        else:
+            return msg.split(self.__delimeter)
+
+    def __check_if_valid_msg(self, msg: str) -> bool:
+        data = msg.split(self.__delimeter)
+        if not isinstance(data, list): return False
+        if len(data) != self.__arg_num: return False
+        bool_l = [d.isdigit() for d in data]
+        return all(bool_l)
 
 # plot class
 class AnalogPlot:
     # constr
-    def __init__(self, strPort, maxLen):
+    def __init__(self, strPort='/dev/ttyACM0', baud=115200, timeout=10, maxLen=500):
         # open serial port
-        self.ser = serial.Serial(strPort, 115200, timeout=100)
+        self.ser = serial.Serial(strPort, baud, timeout=timeout)
 
-        self.ax = deque([0] * maxLen)
-        self.ay = deque([0] * maxLen)
+        self.first = deque([0] * maxLen)
+        self.second = deque([0] * maxLen)
         self.maxLen = maxLen
 
     # add to buffer
@@ -26,9 +50,8 @@ class AnalogPlot:
 
     # add data
     def add(self, data):
-        assert (len(data) == 2)
-        self.addToBuf(self.ax, data[0])
-        self.addToBuf(self.ay, data[1])
+        self.addToBuf(self.first, data[0])
+        self.addToBuf(self.second, data[1])
 
     # update plot
     def update(self, frameNum, a0, a1):
@@ -39,12 +62,11 @@ class AnalogPlot:
             self.add(data)
             print(f'{data} [{is_valid_msg}]')
 
-            a0.set_data(range(self.maxLen), self.ax)
-            a1.set_data(range(self.maxLen), self.ay)
+            a0.set_data(range(self.maxLen), self.first)
+            a1.set_data(range(self.maxLen), self.second)
         except KeyboardInterrupt:
             print('exiting')
 
-        return a0,
 
         # clean up
 
@@ -63,18 +85,13 @@ class AnalogPlot:
 
 
 def main():
-    strPort = '/dev/ttyACM0'
-
-    print('reading from serial port %s... ' % strPort)
-
-    # plot parameters
-    analogPlot = AnalogPlot(strPort, 1000)
+    analogPlot = AnalogPlot()
 
     print('plotting data...')
 
     # set up animation
     fig = plt.figure()
-    ax = plt.axes(xlim=[0,500], ylim=[50000,70000])
+    ax = plt.axes()
 
     a0, = ax.plot([], [])
     a1, = ax.plot([], [])
