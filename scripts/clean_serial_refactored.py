@@ -15,12 +15,14 @@ class SerialLineParser:
     def __init__(self, delimeter=',', arg_num: int = 2):
         self.__delimeter = delimeter
         self.__arg_num = arg_num
+        self.__last_valid = False
 
     def __call__(self, msg: str):
-        if self.__check_if_valid_msg(msg):
-            return [0.0] * self.__arg_num
+        self.__last_valid = self.__check_if_valid_msg(msg)
+        if self.__last_valid:
+            return [float(x) for x in msg.split(self.__delimeter)]
         else:
-            return msg.split(self.__delimeter)
+            return [0.0] * self.__arg_num
 
     def __check_if_valid_msg(self, msg: str) -> bool:
         data = msg.split(self.__delimeter)
@@ -29,13 +31,18 @@ class SerialLineParser:
         bool_l = [d.isdigit() for d in data]
         return all(bool_l)
 
+    @property
+    def valid(self):
+        return self.__last_valid
+
 # plot class
 class AnalogPlot:
     # constr
-    def __init__(self, strPort='/dev/ttyACM0', baud=115200, timeout=10, maxLen=500):
+    def __init__(self, parser=SerialLineParser(), strPort='/dev/ttyACM0', baud=115200, timeout=10, maxLen=500):
         # open serial port
         self.ser = serial.Serial(strPort, baud, timeout=timeout)
 
+        self.parser = parser
         self.first = deque([0] * maxLen)
         self.second = deque([0] * maxLen)
         self.maxLen = maxLen
@@ -57,24 +64,14 @@ class AnalogPlot:
     def update(self, frameNum, a0, a1):
         try:
             line = self.ser.readline().decode('utf-8').rstrip()
-            is_valid_msg = self.check_if_valid_msg(line)
-            data = [0, 0] if not is_valid_msg else [int(val) for val in line.split(',')]
+            data = self.parser(line)
             self.add(data)
-            print(f'{data} [{is_valid_msg}]')
+            print(f'{data}')
 
             a0.set_data(range(self.maxLen), self.first)
             a1.set_data(range(self.maxLen), self.second)
         except KeyboardInterrupt:
             print('exiting')
-
-
-        # clean up
-
-    def check_if_valid_msg(self, msg: str):
-        data = msg.split(',')
-        if not isinstance(data, list): return False
-        if len(data) != 2: return False
-        return data[0].isdigit() and data[1].isdigit()
 
     def close(self):
         # close serial
@@ -92,6 +89,8 @@ def main():
     # set up animation
     fig = plt.figure()
     ax = plt.axes()
+    ax.set_xlim(0, 1000)
+    ax.set_ylim(0, 1500)
 
     a0, = ax.plot([], [])
     a1, = ax.plot([], [])
