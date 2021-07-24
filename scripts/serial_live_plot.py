@@ -68,8 +68,12 @@ class AnalogPlot:
             self.add(data)
             print(f'{data}')
 
-            self.axes[0].set_data(range(self.maxLen), self.signals[0])
-            self.axes[1].set_data(range(self.maxLen), self.signals[1])
+            for i, ax in enumerate(self.axes):
+                ax.set_data(range(self.maxLen), self.signals[i])
+
+            self.ax.relim()
+            self.ax.autoscale_view(True, True, True)
+
         except KeyboardInterrupt:
             print('exiting')
 
@@ -83,8 +87,6 @@ def main():
     # set up animation
     fig = plt.figure()
     ax = plt.axes()
-    ax.set_xlim(0, 500)
-    ax.set_ylim(0, 1500)
     analogPlot = AnalogPlot(ax)
 
     anim = animation.FuncAnimation(fig, analogPlot.update, interval=5)
