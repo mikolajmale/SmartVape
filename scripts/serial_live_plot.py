@@ -1,7 +1,9 @@
 import sys, serial, argparse
 from collections import deque
 from enum import Enum
-from typing import List
+import csv
+from typing import List, Callable
+import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
@@ -63,6 +65,7 @@ class AnalogPlot:
         self.signals = [deque([0] * max_buf_len) for i in range(parser.param_num)]
         self.ax = ax
         self.maxLen = max_buf_len
+        self.__new_data: bool = False
         self.axes = []
         for i in range(parser.param_num):
             a, = ax.plot([], [])
@@ -76,16 +79,21 @@ class AnalogPlot:
             buf.appendleft(val)
 
     def add(self, data):
+        self.__new_data = True
         for i, s in enumerate(self.signals):
             self.__add_to_buf(s, data[i])
 
     # update plot
-    def update(self, frameNum):
+    def update(self, frameNum, external_functions: List[Callable] = None):
         try:
             line = self.ser.readline().decode('utf-8').rstrip()
+            if line: return
             data = self.parser(line)
             self.add(data)
-            print(f'{data}')
+
+            if external_functions:
+                for func in external_functions:
+                    func(data)
 
             for i, ax in enumerate(self.axes):
                 ax.set_data(range(self.maxLen), self.signals[i])
@@ -96,10 +104,26 @@ class AnalogPlot:
         except KeyboardInterrupt:
             print('exiting')
 
-    def close(self):
-        # close serial
+    def __del__(self):
+        print("serial closed")
         self.ser.flush()
         self.ser.close()
+
+
+class CsvWriter:
+    def __init__(self, fn: str, header: List[str] = None):
+        self.__fn = fn
+        self.__file = open(fn, 'w+')
+        self.__writer = csv.writer(self.__file)
+        if header is not None:
+            self.__writer.writerow(header)
+
+    def __del__(self):
+        print(f"file [{self.__fn}] closed")
+        self.__file.close()
+
+    def write(self, data: List[float]):
+        self.__writer.writerow(data)
 
 
 def main():
@@ -108,16 +132,14 @@ def main():
     ax = plt.axes()
     parser = SerialLineParser(delimeter=',', arg_num=2, msg_min_val=[0.0, 0.0], msg_max_val=[75000, 75000])
     analog_plot = AnalogPlot(ax=ax, parser=parser, max_buf_len=100)
+    wd = os.path.dirname(os.path.realpath(__file__))
+    csv_writer = CsvWriter(os.path.join(wd, 'ppg.csv'), header=['IR', 'RED'])
+    callables = []
 
-    anim = animation.FuncAnimation(fig, analog_plot.update, interval=5)
+    anim = animation.FuncAnimation(fig, analog_plot.update, fargs=(callables,), interval=1)
 
     # show plot
     plt.show()
-
-    # clean up
-    analog_plot.close()
-
-    print('exiting.')
 
 
 # call main
