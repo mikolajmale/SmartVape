@@ -87,7 +87,7 @@ class AnalogPlot:
     def update(self, frameNum, external_functions: List[Callable] = None):
         try:
             line = self.ser.readline().decode('utf-8').rstrip()
-            if line: return
+            if not line: return
             data = self.parser(line)
             self.add(data)
 
@@ -134,7 +134,7 @@ def main():
     analog_plot = AnalogPlot(ax=ax, parser=parser, max_buf_len=100)
     wd = os.path.dirname(os.path.realpath(__file__))
     csv_writer = CsvWriter(os.path.join(wd, 'ppg.csv'), header=['IR', 'RED'])
-    callables = []
+    callables = [csv_writer.write]
 
     anim = animation.FuncAnimation(fig, analog_plot.update, fargs=(callables,), interval=1)
 
