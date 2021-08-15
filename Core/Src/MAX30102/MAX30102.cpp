@@ -71,11 +71,21 @@
 #include "task.h"
 
 #include "MAX30102/MAX30102.h"
+#include "etl/circular_buffer.h"
 //#include "MAX30102/algorithm.h"
 
 #define I2C_TIMEOUT	100
 
 I2C_HandleTypeDef *i2c_max30102;
+
+template <typename T>
+struct OxPair{
+	T first;
+	T second;
+};
+
+template<typename T, size_t MAX_SIZE>
+using OxData = etl::circular_buffer<OxPair<T>, MAX_SIZE>;
 
 volatile uint32_t IrBuffer[MAX30102_BUFFER_LENGTH]; //IR LED sensor data
 volatile uint32_t current_ir{0};
