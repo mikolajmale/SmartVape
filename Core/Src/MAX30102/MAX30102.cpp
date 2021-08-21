@@ -80,19 +80,16 @@ I2C_HandleTypeDef *i2c_max30102;
 
 template <typename T>
 struct OxPair{
-	T first;
-	T second;
+	T ir;
+	T red;
 };
+using ox_pair = OxPair<volatile uint32_t>;
 
 template<typename T, size_t MAX_SIZE>
 using OxData = etl::circular_buffer<OxPair<T>, MAX_SIZE>;
 
-volatile uint32_t IrBuffer[MAX30102_BUFFER_LENGTH]; //IR LED sensor data
-volatile uint32_t current_ir{0};
-volatile uint32_t RedBuffer[MAX30102_BUFFER_LENGTH];    //Red LED sensor data
-volatile uint32_t current_red{0};
-volatile uint32_t BufferHead{0};
-volatile uint32_t BufferTail{0};
+OxData<volatile uint32_t, MAX30102_BUFFER_LENGTH> data{};
+
 volatile uint32_t CollectedSamples{0};
 volatile uint8_t IsFingerOnScreen{0};
 int32_t Sp02Value;
@@ -351,7 +348,6 @@ void Max30102_Task(void)
 			if(IsFingerOnScreen)
 			{
 				CollectedSamples = 0;
-				BufferTail = BufferHead;
 				Max30102_Led1PulseAmplitude(MAX30102_RED_LED_CURRENT_HIGH);
 				Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_HIGH);
 				StateMachine = MAX30102_STATE_CALIBRATE;
@@ -376,7 +372,6 @@ void Max30102_Task(void)
 //				taskDISABLE_INTERRUPTS();
 //				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
 //				taskENABLE_INTERRUPTS();
-				BufferTail = (BufferTail + MAX30102_SAMPLES_PER_SECOND) % MAX30102_BUFFER_LENGTH;
 				CollectedSamples = 0;
 				StateMachine = MAX30102_STATE_COLLECT_NEXT_PORTION;
 			}
@@ -398,11 +393,9 @@ void Max30102_Task(void)
 	}
 }
 
-MAX30102_STATUS Max30102_ReadFifo(volatile uint32_t *pun_red_led, volatile uint32_t *pun_ir_led)
+MAX30102_STATUS Max30102_ReadFifo()
 {
-	uint32_t un_temp;
-	*pun_red_led=0;
-	*pun_ir_led=0;
+	uint32_t un_temp, temp_ir, temp_red;
 	uint8_t ach_i2c_data[6];
 
 	if(HAL_I2C_Mem_Read(i2c_max30102, MAX30102_ADDRESS, REG_FIFO_DATA, 1, ach_i2c_data, 6, I2C_TIMEOUT) != HAL_OK)
@@ -411,26 +404,27 @@ MAX30102_STATUS Max30102_ReadFifo(volatile uint32_t *pun_red_led, volatile uint3
 	}
 	un_temp=(unsigned char) ach_i2c_data[0];
 	un_temp<<=16;
-	*pun_red_led+=un_temp;
+	temp_red=un_temp;
 	un_temp=(unsigned char) ach_i2c_data[1];
 	un_temp<<=8;
-	*pun_red_led+=un_temp;
+	temp_red+=un_temp;
 	un_temp=(unsigned char) ach_i2c_data[2];
-	*pun_red_led+=un_temp;
+	temp_red+=un_temp;
 
 	un_temp=(unsigned char) ach_i2c_data[3];
 	un_temp<<=16;
-	*pun_ir_led+=un_temp;
+	temp_ir=un_temp;
 	un_temp=(unsigned char) ach_i2c_data[4];
 	un_temp<<=8;
-	*pun_ir_led+=un_temp;
+	temp_ir+=un_temp;
 	un_temp=(unsigned char) ach_i2c_data[5];
-	*pun_ir_led+=un_temp;
-	*pun_red_led&=0x03FFFF;  //Mask MSB [23:18]
-	*pun_ir_led&=0x03FFFF;  //Mask MSB [23:18]
+	temp_ir+=un_temp;
 
-	current_ir = *pun_ir_led;
-	current_red = *pun_red_led;
+	temp_red&=0x03FFFF;  //Mask MSB [23:18]
+	temp_ir&=0x03FFFF;  //Mask MSB [23:18]
+
+	auto pair = ox_pair{temp_ir, temp_red};
+	data.push(pair);
 
 	return MAX30102_OK;
 }
@@ -452,16 +446,16 @@ MAX30102_STATUS Max30102_ReadInterruptStatus(uint8_t *Status)
 }
 
 void collect_fifo(){
-	while(MAX30102_OK != Max30102_ReadFifo((RedBuffer+BufferHead), (IrBuffer+BufferHead))); // read 2 words
+	while(MAX30102_OK != Max30102_ReadFifo()); // read 2 words
 	if(IsFingerOnScreen)
 	{
-		if(IrBuffer[BufferHead] < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
+		if(data.front().ir < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
 	}
 	else
 	{
-		if(IrBuffer[BufferHead] > MAX30102_IR_VALUE_FINGER_ON_SENSOR) IsFingerOnScreen = 1;
+		if(data.front().ir > MAX30102_IR_VALUE_FINGER_ON_SENSOR) IsFingerOnScreen = 1;
 	}
-	BufferHead = (BufferHead + 1) % MAX30102_BUFFER_LENGTH;
+
 	CollectedSamples++;
 }
 
@@ -535,12 +529,4 @@ MAX30102_STATUS Max30102_Init(I2C_HandleTypeDef *i2c)
 //		return MAX30102_ERROR;
 	StateMachine = MAX30102_STATE_BEGIN;
 	return MAX30102_OK;
-}
-
-/*
- * HELPERS
- */
-
-uint32_t get_last_ir_sample(){
-	return IrBuffer[BufferHead];
 }
