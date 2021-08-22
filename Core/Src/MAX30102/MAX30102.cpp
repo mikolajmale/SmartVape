@@ -70,9 +70,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "MAX30102/MAX30102.h"
+#include "MAX30102/MAX30102.hpp"
+#include "MAX30102/HeartRate.hpp"
 #include "etl/circular_buffer.h"
-//#include "MAX30102/algorithm.h"
 
 #define I2C_TIMEOUT	100
 
@@ -84,20 +84,17 @@ struct OxPair{
 	T red;
 };
 
-template<typename T, size_t MAX_SIZE>
-using OxData =  etl::circular_buffer<OxPair<T>, MAX_SIZE>;
+using OxData =  etl::circular_buffer<OxPair<uint32_t>, MAX30102_BUFFER_LENGTH>;
 
-OxData<uint32_t, MAX30102_BUFFER_LENGTH> read_ox_buffer{};
-OxData<uint32_t, MAX30102_BUFFER_LENGTH> write_ox_buffer{};
+OxData read_ox_buffer{};
+OxData write_ox_buffer{};
 
 OxPair<uint32_t> last_pair;
 
+HeartRate<OxData> hr_algo{};
+
 volatile uint32_t CollectedSamples{0};
 volatile uint8_t IsFingerOnScreen{0};
-int32_t Sp02Value;
-int8_t Sp02IsValid;
-int32_t HeartRate;
-int8_t IsHrValid;
 
 typedef enum
 {
@@ -324,16 +321,6 @@ MAX30102_STATUS Max30102_IsFingerOnSensor(void)
 	return static_cast<MAX30102_STATUS>(IsFingerOnScreen);
 }
 
-int32_t Max30102_GetHeartRate(void)
-{
-	return HeartRate;
-}
-
-int32_t Max30102_GetSpO2Value(void)
-{
-	return Sp02Value;
-}
-
 void led_low_startover(){
 	Max30102_Led1PulseAmplitude(MAX30102_RED_LED_CURRENT_LOW);
 	Max30102_Led2PulseAmplitude(MAX30102_IR_LED_CURRENT_LOW);
@@ -345,8 +332,6 @@ void Max30102_Task(void)
 	switch(StateMachine)
 	{
 		case MAX30102_STATE_BEGIN:
-			HeartRate = 0;
-			Sp02Value = 0;
 			if(IsFingerOnScreen)
 			{
 				CollectedSamples = 0;
@@ -377,6 +362,7 @@ void Max30102_Task(void)
 					write_ox_buffer.push(*it);
 				}
 				read_ox_buffer.clear();
+				hr_algo.process(write_ox_buffer);
 //				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
 				taskENABLE_INTERRUPTS();
 				CollectedSamples = 0;

@@ -32,7 +32,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "MAX30102/MAX30102.h"
+#include "MAX30102/MAX30102.hpp"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
