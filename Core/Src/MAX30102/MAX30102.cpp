@@ -87,7 +87,8 @@ struct OxPair{
 template<typename T, size_t MAX_SIZE>
 using OxData =  etl::circular_buffer<OxPair<T>, MAX_SIZE>;
 
-OxData<uint32_t, MAX30102_BUFFER_LENGTH> data{};
+OxData<uint32_t, MAX30102_BUFFER_LENGTH> read_ox_buffer{};
+OxData<uint32_t, MAX30102_BUFFER_LENGTH> write_ox_buffer{};
 
 OxPair<uint32_t> last_pair;
 
@@ -370,9 +371,14 @@ void Max30102_Task(void)
 		case MAX30102_STATE_CALCULATE_HR:
 			if(IsFingerOnScreen)
 			{
-//				taskDISABLE_INTERRUPTS();
+				taskDISABLE_INTERRUPTS();
+				write_ox_buffer.clear();
+				for (auto it = read_ox_buffer.begin(); it != read_ox_buffer.end(); it++){
+					write_ox_buffer.push(*it);
+				}
+				read_ox_buffer.clear();
 //				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
-//				taskENABLE_INTERRUPTS();
+				taskENABLE_INTERRUPTS();
 				CollectedSamples = 0;
 				StateMachine = MAX30102_STATE_COLLECT_NEXT_PORTION;
 			}
@@ -425,7 +431,7 @@ MAX30102_STATUS Max30102_ReadFifo()
 	temp_ir&=0x03FFFF;  //Mask MSB [23:18]
 
 	last_pair = {temp_ir, temp_red};
-	data.push({temp_ir, temp_red});
+	read_ox_buffer.push({temp_ir, temp_red});
 
 	return MAX30102_OK;
 }
@@ -448,7 +454,7 @@ MAX30102_STATUS Max30102_ReadInterruptStatus(uint8_t *Status)
 
 void collect_fifo() {
 	while(MAX30102_OK != Max30102_ReadFifo()); // read 2 words
-	const auto ir = data.back().ir;
+	const auto ir = read_ox_buffer.back().ir;
 	if(IsFingerOnScreen)
 	{
 		if(ir < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
