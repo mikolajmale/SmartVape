@@ -83,12 +83,12 @@ struct OxPair{
 	T ir;
 	T red;
 };
-using ox_pair = OxPair<volatile uint32_t>;
+using ox_pair = OxPair< uint32_t>;
 
 template<typename T, size_t MAX_SIZE>
-using OxData = etl::circular_buffer<OxPair<T>, MAX_SIZE>;
+using OxData =  etl::circular_buffer<OxPair<T>, MAX_SIZE>;
 
-OxData<volatile uint32_t, MAX30102_BUFFER_LENGTH> data{};
+OxData<uint32_t, MAX30102_BUFFER_LENGTH> data{};
 
 volatile uint32_t CollectedSamples{0};
 volatile uint8_t IsFingerOnScreen{0};
@@ -445,15 +445,16 @@ MAX30102_STATUS Max30102_ReadInterruptStatus(uint8_t *Status)
 	return MAX30102_OK;
 }
 
-void collect_fifo(){
+void collect_fifo() {
 	while(MAX30102_OK != Max30102_ReadFifo()); // read 2 words
+	const auto ir = data.back().ir;
 	if(IsFingerOnScreen)
 	{
-		if(data.front().ir < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
+		if(ir < MAX30102_IR_VALUE_FINGER_OUT_SENSOR) IsFingerOnScreen = 0;
 	}
 	else
 	{
-		if(data.front().ir > MAX30102_IR_VALUE_FINGER_ON_SENSOR) IsFingerOnScreen = 1;
+		if(ir > MAX30102_IR_VALUE_FINGER_ON_SENSOR) IsFingerOnScreen = 1;
 	}
 
 	CollectedSamples++;
