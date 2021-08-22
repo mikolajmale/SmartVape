@@ -89,6 +89,8 @@ using OxData =  etl::circular_buffer<OxPair<T>, MAX_SIZE>;
 
 OxData<uint32_t, MAX30102_BUFFER_LENGTH> data{};
 
+OxPair<uint32_t> last_pair;
+
 volatile uint32_t CollectedSamples{0};
 volatile uint8_t IsFingerOnScreen{0};
 int32_t Sp02Value;
@@ -422,6 +424,7 @@ MAX30102_STATUS Max30102_ReadFifo()
 	temp_red&=0x03FFFF;  //Mask MSB [23:18]
 	temp_ir&=0x03FFFF;  //Mask MSB [23:18]
 
+	last_pair = {temp_ir, temp_red};
 	data.push({temp_ir, temp_red});
 
 	return MAX30102_OK;
