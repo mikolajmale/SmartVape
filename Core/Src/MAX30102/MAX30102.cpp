@@ -83,7 +83,6 @@ struct OxPair{
 	T ir;
 	T red;
 };
-using ox_pair = OxPair< uint32_t>;
 
 template<typename T, size_t MAX_SIZE>
 using OxData =  etl::circular_buffer<OxPair<T>, MAX_SIZE>;
@@ -423,8 +422,7 @@ MAX30102_STATUS Max30102_ReadFifo()
 	temp_red&=0x03FFFF;  //Mask MSB [23:18]
 	temp_ir&=0x03FFFF;  //Mask MSB [23:18]
 
-	auto pair = ox_pair{temp_ir, temp_red};
-	data.push(pair);
+	data.push({temp_ir, temp_red});
 
 	return MAX30102_OK;
 }
