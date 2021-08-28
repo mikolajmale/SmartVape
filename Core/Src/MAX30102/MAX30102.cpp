@@ -72,26 +72,18 @@
 
 #include "MAX30102/MAX30102.hpp"
 #include "MAX30102/HeartRate.hpp"
-#include "etl/circular_buffer.h"
+#include "ox_data_structure.hpp"
 
 #define I2C_TIMEOUT	100
 
 I2C_HandleTypeDef *i2c_max30102;
 
-template <typename T>
-struct OxPair{
-	T ir;
-	T red;
-};
+OxReadData read_ox_buffer{};
+OxWriteData write_ox_buffer{};
 
-using OxData =  etl::circular_buffer<OxPair<uint32_t>, MAX30102_BUFFER_LENGTH>;
+OxSample last_sample;
 
-OxData read_ox_buffer{};
-OxData write_ox_buffer{};
-
-OxPair<uint32_t> last_pair;
-
-HeartRate<OxData> hr_algo{};
+HeartRate<MAX30102_BUFFER_LENGTH> hr_algo{};
 
 volatile uint32_t CollectedSamples{0};
 volatile uint8_t IsFingerOnScreen{0};
@@ -357,9 +349,11 @@ void Max30102_Task(void)
 			if(IsFingerOnScreen)
 			{
 				taskDISABLE_INTERRUPTS();
-				write_ox_buffer.clear();
+				write_ox_buffer.fill({0,0,0});
+				size_t i{0};
 				for (auto it = read_ox_buffer.begin(); it != read_ox_buffer.end(); it++){
-					write_ox_buffer.push(*it);
+					write_ox_buffer[i] = *it;
+					i++;
 				}
 				read_ox_buffer.clear();
 				hr_algo.process(write_ox_buffer);
@@ -416,8 +410,9 @@ MAX30102_STATUS Max30102_ReadFifo()
 	temp_red&=0x03FFFF;  //Mask MSB [23:18]
 	temp_ir&=0x03FFFF;  //Mask MSB [23:18]
 
-	last_pair = {temp_ir, temp_red};
-	read_ox_buffer.push({temp_ir, temp_red});
+	auto const ts = static_cast<uint32_t>(xTaskGetTickCount());
+	last_sample = {ts, temp_ir, temp_red};
+	read_ox_buffer.push(last_sample);
 
 	return MAX30102_OK;
 }
