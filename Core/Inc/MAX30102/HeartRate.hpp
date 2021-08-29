@@ -20,8 +20,9 @@ public:
 		_smoothing_window.fill({0, 1, 1});
 	};
 
-	void process(etl::array<OxSample, SIGNAL_SIZE>& signal){
+	void process(OxWriteData& signal){
 		algo::utils::convolution(_smoothing_window, signal);
+		algo::utils::gradient(signal);
 	};
 
 	uint32_t get_hr(void) {return _heart_rate;};
@@ -30,7 +31,7 @@ private:
 
 	uint32_t _heart_rate;
 	static size_t const constexpr SMOOTHING_SIZE = 20;
-	etl::array<OxSample, SMOOTHING_SIZE> _smoothing_window;
+	etl::array<TimestampedOxSample, SMOOTHING_SIZE> _smoothing_window;
 };
 
 #endif /* INC_MAX30102_HEARTRATE_H_ */

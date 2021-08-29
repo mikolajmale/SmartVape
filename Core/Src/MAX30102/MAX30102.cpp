@@ -81,7 +81,7 @@ I2C_HandleTypeDef *i2c_max30102;
 OxReadData read_ox_buffer{};
 OxWriteData write_ox_buffer{};
 
-OxSample last_sample;
+TimestampedOxSample last_sample;
 
 HeartRate<MAX30102_BUFFER_LENGTH> hr_algo{};
 
