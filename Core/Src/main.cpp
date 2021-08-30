@@ -177,9 +177,8 @@ static void max30102_task_handler(void* params){
 
 	while(1){
 		Max30102_Task();
+		printf("%d\n", int(get_hr()));
 
-//		spo2 = Max30102_GetSpO2Value();
-//		hr = Max30102_GetHeartRate();
 		// with 10 ms system crashes - needs testing
 		vTaskDelay(50);
 	}

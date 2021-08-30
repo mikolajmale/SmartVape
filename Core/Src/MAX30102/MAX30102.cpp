@@ -79,11 +79,12 @@
 I2C_HandleTypeDef *i2c_max30102;
 
 OxReadData read_ox_buffer{};
-OxWriteData write_ox_buffer{};
+OxStream write_ox_stream{};
 
 TimestampedOxSample last_sample;
 
-HeartRate<MAX30102_BUFFER_LENGTH> hr_algo{};
+HeartRate hr_algo{};
+float HR{0};
 
 volatile uint32_t CollectedSamples{0};
 volatile uint8_t IsFingerOnScreen{0};
@@ -349,15 +350,16 @@ void Max30102_Task(void)
 			if(IsFingerOnScreen)
 			{
 				taskDISABLE_INTERRUPTS();
-				write_ox_buffer.fill({0,0,0});
-				size_t i{0};
+
+				write_ox_stream.clear();
+
 				for (auto it = read_ox_buffer.begin(); it != read_ox_buffer.end(); it++){
-					write_ox_buffer[i] = *it;
-					i++;
+					write_ox_stream.append(*it);
 				}
 				read_ox_buffer.clear();
-				hr_algo.process(write_ox_buffer);
-//				maxim_heart_rate_and_oxygen_saturation(IrBuffer, RedBuffer, MAX30102_BUFFER_LENGTH - MAX30102_SAMPLES_PER_SECOND, BufferTail, &Sp02Value, &Sp02IsValid, &HeartRate, &IsHrValid);
+				hr_algo.process(write_ox_stream);
+				HR = hr_algo.get_hr();
+
 				taskENABLE_INTERRUPTS();
 				CollectedSamples = 0;
 				StateMachine = MAX30102_STATE_COLLECT_NEXT_PORTION;
@@ -519,3 +521,5 @@ MAX30102_STATUS Max30102_Init(I2C_HandleTypeDef *i2c)
 	StateMachine = MAX30102_STATE_BEGIN;
 	return MAX30102_OK;
 }
+
+float get_hr(){ return hr_algo.get_hr(); }

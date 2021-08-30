@@ -257,5 +257,6 @@ MAX30102_STATUS Max30102_Led2PulseAmplitude(uint8_t Value);
 //	Usage functions
 //
 void Max30102_Task(void);
+float get_hr(void);
 
 #endif /* MAX30102_H_ */
