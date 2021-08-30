@@ -107,6 +107,50 @@ struct TimestampedOxSample{
 	}
 };
 
+struct OxStream{
+		using array = etl::array<uint32_t, MAX30102_BUFFER_LENGTH>;
+		array ts;
+		array ir;
+		array red;
+
+		OxStream() : _iterator{0} {}
+
+		void clear(void){
+			ts.fill(0);
+			ir.fill(0);
+			red.fill(0);
+			_iterator = 0;
+		}
+
+		bool append(const TimestampedOxSample& sample){
+			if (_iterator == MAX30102_BUFFER_LENGTH) return false;
+
+			ts[_iterator] = sample.ts;
+			ir[_iterator] = sample.ir;
+			red[_iterator] = sample.red;
+
+			_iterator++;
+			return true;
+		}
+
+		array & get_time(void) { return ts; }
+
+		array const & get_time(void) const { return ts; }
+
+		array & get_ir(void) { return ir; }
+
+		array const & get_ir(void) const { return ir; }
+
+		array & get_red(void) { return red; }
+
+		array const & get_red(void) const { return red; }
+
+
+	private:
+		uint16_t _iterator;
+
+};
+
 using OxReadData =  etl::circular_buffer<TimestampedOxSample, MAX30102_BUFFER_LENGTH>;
 using OxWriteData =  etl::array<TimestampedOxSample, MAX30102_BUFFER_LENGTH>;
 
