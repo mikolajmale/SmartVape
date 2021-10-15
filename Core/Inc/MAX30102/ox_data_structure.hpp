@@ -12,8 +12,8 @@
 #include "etl/array.h"
 
 struct OxSample{
-	uint32_t ir;
-	uint32_t red;
+	int32_t ir;
+	int32_t red;
 
 	OxSample operator + (const OxSample& other){
 		OxSample temp;
@@ -45,9 +45,9 @@ struct OxSample{
 };
 
 struct TimestampedOxSample{
-	uint32_t ts;
-	uint32_t ir;
-	uint32_t red;
+	int32_t ts;
+	int32_t ir;
+	int32_t red;
 
 	TimestampedOxSample operator + (const TimestampedOxSample& other){
 		TimestampedOxSample temp;
@@ -108,7 +108,7 @@ struct TimestampedOxSample{
 };
 
 struct OxStream{
-		using array = etl::array<uint32_t, MAX30102_BUFFER_LENGTH>;
+		using array = etl::array<int32_t, MAX30102_BUFFER_LENGTH>;
 		array ts;
 		array ir;
 		array red;
