@@ -92,7 +92,10 @@ namespace algo::utils{
 				peak_time += signal_time[i];
 				samples_in_peak++;
 			} else if (samples_in_peak != 0){
-				if (samples_in_peak > 4) true_peak_times.push_back((peak_time / samples_in_peak) / 1000);
+				if (samples_in_peak > 4){
+					const float ts = (peak_time / samples_in_peak) / 1000.0;
+					true_peak_times.push_back(ts);
+				}
 				peak_time = 0;
 				samples_in_peak = 0;
 			}

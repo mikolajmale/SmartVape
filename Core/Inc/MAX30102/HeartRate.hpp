@@ -28,7 +28,6 @@ public:
 		etl::standard_deviation<etl::standard_deviation_type::Population, int32_t> standard_deviation(ir.begin(), ir.end());
 		const int32_t std_dev = static_cast<int32_t>(standard_deviation.get_standard_deviation());
 		_heart_rate = algo::utils::hr_calculator(ir, signal.get_time(), std_dev);
-		int a;
 	};
 
 	uint32_t get_hr(void) {return _heart_rate;};
